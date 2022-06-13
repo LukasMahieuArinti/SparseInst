@@ -16,6 +16,9 @@ from detectron2.evaluation import COCOEvaluator, print_csv_format
 from sparseinst import build_sparse_inst_encoder, build_sparse_inst_decoder, add_sparse_inst_config
 from sparseinst import COCOMaskEvaluator
 
+from detectron2.data.datasets import register_coco_instances
+register_coco_instances("specprep11_train", {}, "data/20220404_specprep11_train.json", "data/images_20220404")
+register_coco_instances("specprep11_val", {}, "data/20220404_specprep11_val.json", "data/images_20220404")
 
 device = torch.device('cuda:0')
 dtype = torch.float32

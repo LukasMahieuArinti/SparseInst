@@ -1,5 +1,7 @@
 # Data
 /data
+/eval_video
+*.mp4
 
 # output dir
 output
