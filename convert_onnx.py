@@ -25,11 +25,6 @@ from test_net import process_batched_inputs
 # experimental. API not yet final
 def export_tracing(torch_model, inputs):
     assert TORCH_VERSION >= (1, 8)
-    # image = inputs[0]["image"]
-    # height = torch.Tensor([inputs[0]["height"]])
-    # width = torch.Tensor([inputs[0]["width"]])
-    # inputs = [{"image": image, "height": height, "width": width}]  # remove other unused keys
-
     #input_names = ["image", "height", "width"] #instances, gt_classes, gt_masks
     # output_names = ["output1"]
     images = inputs["images"]
