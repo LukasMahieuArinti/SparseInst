@@ -177,7 +177,6 @@ def main(args):
     trainer.resume_or_load(resume=args.resume)
     return trainer.train()
 
-
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     print("Command Line Args:", args)

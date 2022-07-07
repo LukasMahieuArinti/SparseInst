@@ -5,9 +5,8 @@ import os
 import torch
 from detectron2.utils.logger import setup_logger
 from detectron2.data.catalog import MetadataCatalog
-from detectron2.config import get_cfg
 
-from helpers import add_sparse_inst_config, load_test_image, DefaultPredictor
+from helpers import setup, load_test_image, DefaultPredictor
 from sparseinstonnx.sparseinstonnx import SparseInstONNX # Import to register the metadata.
 
 
@@ -21,16 +20,6 @@ python3 export_onnx.py --config-file configs/coco/yolox_s.yaml --input ./images/
 
 """
 torch.set_grad_enabled(False)
-
-def setup(args):
-    """
-    Create configs and perform basic setups.
-    """
-    cfg = get_cfg()
-    add_sparse_inst_config(cfg)
-    cfg.merge_from_file(args.config_file)
-    cfg.freeze()
-    return cfg
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
@@ -52,6 +41,12 @@ def get_parser():
         default=False,
         action="store_true",
         help="verbose when onnx export",
+    )
+    parser.add_argument(
+        "--torchscript",
+        default=False,
+        action="store_true",
+        help="torchscript export after onnx export"
     )
     return parser
 
@@ -90,12 +85,8 @@ if __name__ == "__main__":
         dynamic_axes=dynamic_axes,
     )
 
-    # mask_pred, scores, labels = model(inp)
-    # out = detr_postprocess(out, ori_img)
-    # detr postprocess
-    # vis_res_fast(out, ori_img, colors=colors)
-
-    # Trace to torchscript as well
-    ts_f = './onnx/output/model_converted.pt'
-    traced = torch.jit.trace(model, inp)
-    torch.jit.save(traced, ts_f)
+    # Trace to torchscript as well. Optional.
+    if args.torchscript:
+        ts_f = './onnx/output/model_converted.pt'
+        traced = torch.jit.trace(model, inp)
+        torch.jit.save(traced, ts_f)

@@ -1,5 +1,6 @@
 from detectron2.config import CfgNode as CN
 import cv2
+from pyparsing import str_type
 import torch
 import numpy as np
 from alfred.dl.torch.common import device
@@ -8,6 +9,7 @@ from detectron2.modeling import build_model
 from detectron2.data.catalog import MetadataCatalog
 from detectron2.checkpoint import DetectionCheckpointer
 import detectron2.data.transforms as T
+from detectron2.config import get_cfg
 
 class DefaultPredictor:
     def __init__(self, cfg):
@@ -45,6 +47,19 @@ def load_test_image(f, h, w, bs=1):
     a = cv2.resize(a, (w, h))
     a_t = torch.tensor(a.astype(np.float32)).to(device).unsqueeze(0).repeat(bs, 1, 1, 1)
     return a_t, a
+
+def setup(args, config_file=None):
+    """
+    Create configs and perform basic setups.
+    """
+    cfg = get_cfg()
+    add_sparse_inst_config(cfg)
+    if not config_file:
+        cfg.merge_from_file(args.config_file)
+    else:
+        cfg.merge_from_file(config_file)
+    cfg.freeze()
+    return cfg
 
 def add_sparse_inst_config(cfg):
     cfg.MODEL.DEVICE = 'cuda'
