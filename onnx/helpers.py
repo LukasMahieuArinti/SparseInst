@@ -16,12 +16,12 @@ class DefaultPredictor:
         self.cfg = cfg.clone()  # cfg can be modified by model
         self.model = build_model(self.cfg)
         self.model.eval()
-        print(cfg)
         if len(cfg.DATASETS.TEST):
             self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
 
         checkpointer = DetectionCheckpointer(self.model)
         checkpointer.load(cfg.MODEL.WEIGHTS)
+        print('Loaded weights from {}'.format(cfg.MODEL.WEIGHTS))
 
         self.aug = T.ResizeShortestEdge(
             [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
@@ -58,7 +58,6 @@ def setup(args, config_file=None):
         cfg.merge_from_file(args.config_file)
     else:
         cfg.merge_from_file(config_file)
-    cfg.freeze()
     return cfg
 
 def add_sparse_inst_config(cfg):
