@@ -9,11 +9,12 @@ import numpy as np
 import torch
 import cv2
 import onnx
-#import onnxruntime
+import onnxruntime
 
 from helpers import DefaultPredictor, load_test_image, setup
 from sparseinstonnx.sparseinstonnx import SparseInstONNX # Import to register the metadata.
 import argparse
+from onnx.external_data_helper import load_external_data_for_model
 
 ############### First test ###############
 def model_form_test(onnx_file: str) -> bool:
@@ -29,105 +30,80 @@ def model_form_test(onnx_file: str) -> bool:
     try:
         onnx.checker.check_model(model) # Raises exception if test fails
         return True
-    except:
-        return False
+    except onnx.checker.ValidationError as e:
+        return e
 
 ############### Second test ###############
-def predictions_test(onnx_file: str, torch_file: str, onnx_cfg: str, torch_cfg: str, input_image: str) -> bool:
-    """Test whether outputs of onnx model are close to outputs of torch model
+def prediction_test(torch_prediction: list, onnx_prediction: list) -> bool:
+    assert len(torch_prediction) == len(onnx_prediction), "Torch prediction and onnx prediction don't have same shape"
 
-    Args:
-        onnx_file (str): location of onnx model
-        torch_file (str): location of torch model
-        input_image (str): location of input image
+    pass
 
-    Returns:
-        bool: True or False
-    """
-    # Load test input image
-    h = 480
-    w = 640
-    inp, ori_img = load_test_image(input_image, h, w)
-
-    # Predict with pytorch model
-    predictor_torch = DefaultPredictor(torch_cfg)
-    model_torch = predictor_torch.model
-    model_torch.onnx_export = True
-    model_torch.float()
-    out = model_torch(inp)
-    return(out)
-
-
-
-    # compare ONNX Runtime and PyTorch results
-    #np.testing.assert_allclose(to_numpy(torch_out), ort_outs[0], rtol=1e-03, atol=1e-05)
-
-def _onnxruntime_model_prediction(onnx_file: str, input_image:str) -> torch.Tensor:
-    # Load test input image
-    h = 480
-    w = 640
-    inp, ori_img = load_test_image(input_image, h, w)
-
-    ort_session = onnxruntime.InferenceSession(onnx_file)
-
-    def to_numpy(tensor):
-        return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
+############### Helpers ###############
+def _onnxruntime_model_prediction(onnx_file: str, input_image:torch.Tensor) -> torch.Tensor:
+    ort_session = onnxruntime.InferenceSession(onnx_file, providers=["CUDAExecutionProvider"])
 
     # compute ONNX Runtime output prediction
-    ort_inputs = {ort_session.get_inputs()[0].name: to_numpy(x)}
-    ort_outs = ort_session.run(None, ort_inputs)
+    input_name = ort_session.get_inputs()[0].name
+    pred_onnx = ort_session.run(None, {input_name: input_image.cpu().numpy()})
+    return(pred_onnx)
 
-def _pytorch_model_prediction(torch_file: str, config, input_image: str) -> torch.Tensor:
-    # Load test input image
-    h = 480
-    w = 640
-    inp, ori_img = load_test_image(input_image, h, w)
-
-
+def _pytorch_model_prediction(config, input_image: torch.Tensor) -> torch.Tensor:
     predictor = DefaultPredictor(config).model
     predictor.onnx_export = True
-    out = predictor(inp)
-    print(out)
+    pred_torch = predictor(input_image)
+    return(pred_torch)
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
     parser.add_argument(
         "--onnx-config",
-        default="./onnx/data/onnx_config.yaml",
+        default="./onnx_export/data/onnx_config.yaml",
         metavar="FILE",
         help="path to config file",
     )
     parser.add_argument(
         "--torch-config",
-        default="./onnx/data/torch_config.yaml",
+        default="./onnx_export/data/torch_config.yaml",
         metavar="FILE",
         help="path to config file",
     )
 
     parser.add_argument(
         "--onnx-model",
-        default="./onnx/output/model_converted.onnx",
+        default="./onnx_export/output/model_converted_sim.onnx",
         metavar="FILE",
         help="path to config file",
     )
     parser.add_argument(
         "--torch-model",
-        default="./onnx/output/model_converted.pt",
+        default="./onnx_export/output/model_converted.pt",
         metavar="FILE",
         help="path to config file",
     )
     parser.add_argument(
         "--input",
-        default="./onnx/data/test_image.png",
+        default="./onnx_export/data/test_image.jpg",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
     )
     return parser
 
 if __name__ == "__main__":
+    # Load configs
     args = get_parser().parse_args()
-    cfg_onnx = setup(args, args.onnx_config)
+    cfg = setup(args, args.onnx_config)
 
+    # Load data
+    h = 480
+    w = 640
+    input_image, _ = load_test_image(args.input, 640, 640)
+    
+    # First test
     assert model_form_test(args.onnx_model) == True, "Check onnx model test failed; onnx model is not well formed"
-    _pytorch_model_prediction(args.torch_model, cfg_onnx, args.input)
+    
+    # Second test
+    torch_prediction = _pytorch_model_prediction(cfg, input_image)
+    onnx_prediction = _onnxruntime_model_prediction(args.onnx_model, input_image)
+    prediction_test(torch_prediction, onnx_prediction)
     #assert predictions_test(args.onnx_model, args.torch_model, cfg_onnx, cfg_onnx, args.input) == True, "Prediction comparison failed; predictions from onnx are not close enough to torch predictions"

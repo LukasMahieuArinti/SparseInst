@@ -57,6 +57,7 @@ class SparseInstONNX(nn.Module):
 
         # move to target device
         self.device = torch.device(cfg.MODEL.DEVICE)
+        self.onnx_export = False
 
         # backbone
         self.backbone = build_backbone(cfg)
@@ -83,6 +84,7 @@ class SparseInstONNX(nn.Module):
         # inference
         # self.cls_threshold = cfg.MODEL.SPARSE_INST.CLS_THRESHOLD
         #self.cls_threshold = cfg.MODEL.YOLO.CONF_THRESHOLD
+        self.cls_threshold = cfg.MODEL.SPARSE_INST.CLS_THRESHOLD
         self.mask_threshold = cfg.MODEL.SPARSE_INST.MASK_THRESHOLD
         self.max_detections = cfg.MODEL.SPARSE_INST.MAX_DETECTIONS
 
@@ -92,7 +94,6 @@ class SparseInstONNX(nn.Module):
 
     def preprocess_inputs(self, batched_inputs):
         images = [x["image"].to(self.device) for x in batched_inputs]
-        images = batched_inputs.to(self.device)
         images = [self.normalizer(x) for x in images]
         images = ImageList.from_tensors(images, 32)
         return images

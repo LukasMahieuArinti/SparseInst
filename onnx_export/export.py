@@ -25,13 +25,13 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
     parser.add_argument(
         "--config-file",
-        default="./onnx/data/onnx_config.yaml",
+        default="./onnx_export/data/onnx_config.yaml",
         metavar="FILE",
         help="path to config file",
     )
     parser.add_argument(
         "--input",
-        default="./onnx/data/test_image.png",
+        default="./onnx_export/data/test_image.png",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
     )
@@ -48,6 +48,12 @@ def get_parser():
         action="store_true",
         help="torchscript export after onnx export"
     )
+    parser.add_argument(
+        "--opts",
+        help="Modify config options using the command-line 'KEY VALUE' pairs",
+        default=[],
+        nargs=argparse.REMAINDER,
+    )
     return parser
 
 if __name__ == "__main__":
@@ -59,7 +65,7 @@ if __name__ == "__main__":
     metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
 
     # Load sample image
-    h = 480
+    h = 640
     w = 640
     inp, ori_img = load_test_image(args.input, h, w)
 
@@ -70,9 +76,9 @@ if __name__ == "__main__":
     model.onnx_export = True
 
     # Export model to ONNX
-    onnx_f = './onnx/output/model_converted.onnx'
+    onnx_f = './onnx_export/output/model_converted.onnx'
 
-    input_names, output_names, dynamic_axes = ["masks", "scores", "labels"], ["images"], {"images": {0: "batch"}}
+    input_names, output_names, dynamic_axes = ["images"], ["masks", "scores", "labels"],  {"images": {0: "batch"}}
     torch.onnx.export(
         model,
         inp,
@@ -85,8 +91,14 @@ if __name__ == "__main__":
         dynamic_axes=dynamic_axes,
     )
 
+    # use onnxsimplify to reduce reduent model.
+    sim_onnx = onnx_f.replace(".onnx", "_sim.onnx")
+    os.system(
+        f"python3 -m onnxsim {onnx_f} {sim_onnx} --dynamic-input-shape --overwrite-input-shape 1,{h},{w},3"
+    )
+
     # Trace to torchscript as well. Optional.
     if args.torchscript:
-        ts_f = './onnx/output/model_converted.pt'
+        ts_f = './onnx_export/output/model_converted.pt'
         traced = torch.jit.trace(model, inp)
         torch.jit.save(traced, ts_f)

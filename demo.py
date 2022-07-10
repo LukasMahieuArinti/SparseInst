@@ -12,6 +12,7 @@ from detectron2.data.detection_utils import read_image
 from detectron2.utils.logger import setup_logger
 
 from sparseinst import VisualizationDemo, add_sparse_inst_config
+from onnx.sparseinstonnx.sparseinstonnx import SparseInstONNX
 
 
 # constants
@@ -59,7 +60,7 @@ def get_parser():
     parser.add_argument(
         "--confidence-threshold",
         type=float,
-        default=0.5,
+        default=0.15,
         help="Minimum score for instance predictions to be shown",
     )
     parser.add_argument(

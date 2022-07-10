@@ -15,28 +15,38 @@ SPARSE_INST_ENCODER_REGISTRY = Registry("SPARSE_INST_ENCODER")
 SPARSE_INST_ENCODER_REGISTRY.__doc__ = "registry for SparseInst decoder"
 
 
+# class MyAdaptiveAvgPool2d(nn.Module):
+#     def __init__(self, sz=None):
+#         super().__init__()
+#         self.sz = sz
+
+#     def forward(self, x):
+#         inp_size = x.size()
+#         kernel_width, kernel_height = inp_size[2], inp_size[3]
+#         if self.sz is not None:
+#             if isinstance(self.sz, int):
+#                 kernel_width = torch.ceil(inp_size[2] / self.sz)
+#                 kernel_height = torch.ceil(inp_size[3] / self.sz)
+#             elif isinstance(self.sz, list) or isinstance(self.sz, tuple):
+#                 assert len(self.sz) == 2
+#                 kernel_width = torch.ceil(inp_size[2] / self.sz[0])
+#                 kernel_height = torch.ceil(inp_size[3] / self.sz[1])
+#         if torch.is_tensor(kernel_width):
+#             kernel_width = kernel_width.item()
+#             kernel_height = kernel_height.item()
+#         return F.avg_pool2d(
+#             input=x, ceil_mode=False, kernel_size=(kernel_width, kernel_height)
+#         )
+
 class MyAdaptiveAvgPool2d(nn.Module):
     def __init__(self, sz=None):
         super().__init__()
-        self.sz = sz
 
-    def forward(self, x):
+    def forward(self, x): 
         inp_size = x.size()
-        kernel_width, kernel_height = inp_size[2], inp_size[3]
-        if self.sz is not None:
-            if isinstance(self.sz, int):
-                kernel_width = math.ceil(inp_size[2] / self.sz)
-                kernel_height = math.ceil(inp_size[3] / self.sz)
-            elif isinstance(self.sz, list) or isinstance(self.sz, tuple):
-                assert len(self.sz) == 2
-                kernel_width = math.ceil(inp_size[2] / self.sz[0])
-                kernel_height = math.ceil(inp_size[3] / self.sz[1])
-        if torch.is_tensor(kernel_width):
-            kernel_width = kernel_width.item()
-            kernel_height = kernel_height.item()
-        return F.avg_pool2d(
-            input=x, ceil_mode=False, kernel_size=(kernel_width, kernel_height)
-        )
+        x_shape = [int(s) for s in x.shape[2:]]
+        return F.avg_pool2d(input=x,
+                  kernel_size= x_shape)
 
 
 class PyramidPoolingModule(nn.Module):
