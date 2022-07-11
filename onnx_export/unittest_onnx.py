@@ -12,7 +12,8 @@ import onnxruntime
 from helpers import DefaultPredictor, load_test_image, setup
 from sparseinstonnx.sparseinstonnx import SparseInstONNX # Import to register the metadata.
 import argparse
-from onnx.external_data_helper import load_external_data_for_model
+from detectron2.utils.logger import setup_logger
+
 
 ############### First test ###############
 def model_form_test(onnx_file: str) -> bool:
@@ -27,18 +28,19 @@ def model_form_test(onnx_file: str) -> bool:
     model = onnx.load(onnx_file)
     try:
         onnx.checker.check_model(model) # Raises exception if test fails
-        print('ONNX model was defined correctly')
+        logger.debug('ONNX model was defined correctly')
         return True
     except onnx.checker.ValidationError as e:
+        logger.debug(e)
         return e
 
 ############### Second test ###############
 def prediction_test(torch_prediction: list, onnx_prediction: list) -> bool:
     assert len(torch_prediction) == len(onnx_prediction), "Torch prediction and onnx prediction don't have same shape"
-    print('Torch prediction and onnx prediction have same shape')
+    logger.debug('Torch prediction and onnx prediction have same shape')
     # Test predicted probabilities
     assert np.allclose(torch_prediction[1].cpu().detach().numpy(), onnx_prediction[1], atol = 0.1), "Some predicted probabilities are not close enough"
-    print('Torch and onnx predicted class probabilities are within 0.1 of each other')
+    logger.debug('Torch and onnx predicted class probabilities are within 0.1 of each other')
 
 ############### Helpers ###############
 def _onnxruntime_model_prediction(onnx_file: str, input_image:torch.Tensor) -> torch.Tensor:
@@ -88,6 +90,10 @@ if __name__ == "__main__":
     args = get_parser().parse_args()
     cfg = setup(args, args.onnx_config)
 
+    logger = setup_logger(output = "onnx_export/output/log.txt",name="detectron2")
+    logger.debug(f"UNIT TESTING ONNX MODEL")
+    logger.debug("Arguments: " + str(args))
+
     # Load data
     h = 640
     w = 640
@@ -95,10 +101,10 @@ if __name__ == "__main__":
     
     # First test
     assert model_form_test(args.onnx_model) == True, "Check onnx model test failed; onnx model is not well formed"
-    
+
     # Second test
     torch_prediction = _pytorch_model_prediction(cfg, input_image)
     onnx_prediction = _onnxruntime_model_prediction(args.onnx_model, input_image)
     prediction_test(torch_prediction, onnx_prediction)
     
-    print('All tests passed')
+    logger.debug('All tests passed')

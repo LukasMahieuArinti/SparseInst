@@ -3,12 +3,12 @@ import argparse
 import multiprocessing as mp
 import os
 import torch
-from detectron2.utils.logger import setup_logger
+
 from detectron2.data.catalog import MetadataCatalog
+from detectron2.utils.logger import setup_logger
 
 from helpers import setup, load_test_image, DefaultPredictor
 from sparseinstonnx.sparseinstonnx import SparseInstONNX # Import to register the metadata.
-
 
 """
 Export the SparseInst model to ONNX format.
@@ -62,6 +62,11 @@ if __name__ == "__main__":
     assert os.path.isfile(args.input), "onnx export only supports using an image as input"
     cfg = setup(args)
 
+
+    logger = setup_logger(output = "onnx_export/output/log.txt",name="detectron2")
+    logger.debug(f"EXPORTING ONNX MODEL")
+    logger.debug("Arguments: " + str(args))
+
     metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
 
     # Load sample image
@@ -90,6 +95,7 @@ if __name__ == "__main__":
         verbose=args.verbose,
         dynamic_axes=dynamic_axes,
     )
+    logger.debug(f"ONNX converted succesfully; saved in {onnx_f}")
 
     # use onnxsimplify to reduce reduent model.
     sim_onnx = onnx_f.replace(".onnx", "_sim.onnx")
@@ -97,13 +103,18 @@ if __name__ == "__main__":
         f"python3 -m onnxsim {onnx_f} {sim_onnx} --overwrite-input-shape 1,{h},{w},3"
     )
 
+    logger.debug(f"ONNX graph simplified succesfully; saved in {sim_onnx}")
+
     # Use OLive to quantize simplified onnx model
     os.system(
         f"olive optimize --optimization_config onnx_export/data/opt_config.json"
     )
+
+    logger.debug(f"ONNX quantization was succesful; saved in onnx_export/output")
 
     # Trace to torchscript as well. Optional.
     if args.torchscript:
         ts_f = './onnx_export/output/model_converted.pt'
         traced = torch.jit.trace(model, inp)
         torch.jit.save(traced, ts_f)
+        logger.debug(f"Trace to Torchscript was succesful; saved in {ts_f}")
