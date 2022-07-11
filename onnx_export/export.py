@@ -31,7 +31,7 @@ def get_parser():
     )
     parser.add_argument(
         "--input",
-        default="./onnx_export/data/test_image.png",
+        default="./onnx_export/data/test_image.jpg",
         help="A list of space separated input images; "
         "or a single glob pattern such as 'directory/*.jpg'",
     )
@@ -94,7 +94,12 @@ if __name__ == "__main__":
     # use onnxsimplify to reduce reduent model.
     sim_onnx = onnx_f.replace(".onnx", "_sim.onnx")
     os.system(
-        f"python3 -m onnxsim {onnx_f} {sim_onnx} --dynamic-input-shape --overwrite-input-shape 1,{h},{w},3"
+        f"python3 -m onnxsim {onnx_f} {sim_onnx} --overwrite-input-shape 1,{h},{w},3"
+    )
+
+    # Use OLive to quantize simplified onnx model
+    os.system(
+        f"olive optimize --optimization_config onnx_export/data/opt_config.json"
     )
 
     # Trace to torchscript as well. Optional.

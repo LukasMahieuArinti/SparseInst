@@ -2,12 +2,10 @@
 Test whether the onnx conversion went through correctly, by:
 1. Checking whether the onnx graph formed correctly with onnx.checker.check_model
 2. Comparing how close the individual output values of the onnx model are to the outputs of the original model
-3. Comparing the predictions on an image of the onnx model to the image predictions of the original model
 """
 
 import numpy as np
 import torch
-import cv2
 import onnx
 import onnxruntime
 
@@ -29,6 +27,7 @@ def model_form_test(onnx_file: str) -> bool:
     model = onnx.load(onnx_file)
     try:
         onnx.checker.check_model(model) # Raises exception if test fails
+        print('ONNX model was defined correctly')
         return True
     except onnx.checker.ValidationError as e:
         return e
@@ -36,8 +35,10 @@ def model_form_test(onnx_file: str) -> bool:
 ############### Second test ###############
 def prediction_test(torch_prediction: list, onnx_prediction: list) -> bool:
     assert len(torch_prediction) == len(onnx_prediction), "Torch prediction and onnx prediction don't have same shape"
-
-    pass
+    print('Torch prediction and onnx prediction have same shape')
+    # Test predicted probabilities
+    assert np.allclose(torch_prediction[1].cpu().detach().numpy(), onnx_prediction[1], atol = 0.1), "Some predicted probabilities are not close enough"
+    print('Torch and onnx predicted class probabilities are within 0.1 of each other')
 
 ############### Helpers ###############
 def _onnxruntime_model_prediction(onnx_file: str, input_image:torch.Tensor) -> torch.Tensor:
@@ -63,17 +64,10 @@ def get_parser():
         help="path to config file",
     )
     parser.add_argument(
-        "--torch-config",
-        default="./onnx_export/data/torch_config.yaml",
-        metavar="FILE",
-        help="path to config file",
-    )
-
-    parser.add_argument(
         "--onnx-model",
-        default="./onnx_export/output/model_converted_sim.onnx",
+        default="./onnx_export/olive_opt_result/optimized_model.onnx",
         metavar="FILE",
-        help="path to config file",
+        help="path to onnx model",
     )
     parser.add_argument(
         "--torch-model",
@@ -95,9 +89,9 @@ if __name__ == "__main__":
     cfg = setup(args, args.onnx_config)
 
     # Load data
-    h = 480
+    h = 640
     w = 640
-    input_image, _ = load_test_image(args.input, 640, 640)
+    input_image, _ = load_test_image(args.input, h, w)
     
     # First test
     assert model_form_test(args.onnx_model) == True, "Check onnx model test failed; onnx model is not well formed"
@@ -106,4 +100,5 @@ if __name__ == "__main__":
     torch_prediction = _pytorch_model_prediction(cfg, input_image)
     onnx_prediction = _onnxruntime_model_prediction(args.onnx_model, input_image)
     prediction_test(torch_prediction, onnx_prediction)
-    #assert predictions_test(args.onnx_model, args.torch_model, cfg_onnx, cfg_onnx, args.input) == True, "Prediction comparison failed; predictions from onnx are not close enough to torch predictions"
+    
+    print('All tests passed')

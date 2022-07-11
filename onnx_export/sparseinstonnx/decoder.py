@@ -228,11 +228,7 @@ class GroupInstanceBranch(nn.Module):
 
         # d4 = torch.div(N, 4, rounding_mode='floor') # can't use this for onnx tracable
         d4 = N // 4
-        inst_features = (
-            inst_features.reshape(B, 4, d4, -1)
-            .transpose(1, 2)
-            .reshape(B, d4, -1)
-        )
+        inst_features = inst_features.reshape(B, 4, N // self.num_groups, -1).transpose(1, 2).reshape(B, N // self.num_groups, -1)
 
         inst_features = F.relu_(self.fc(inst_features))
         # predict classification & segmentation kernel & objectness
