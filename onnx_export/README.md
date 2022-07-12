@@ -20,7 +20,7 @@ The trained model is a slightly simplified version of the original model since O
 
 Copy config.yaml that was used for pytorch model training to *onnx_export/data* and rename to *onnx_config.yaml*.
 
-Change param 'MODEL.WEIGHTS' in config to path of output pytorch model (e.g. 'output/model)
+Change param 'MODEL.WEIGHTS' in config to path of output pytorch model (e.g. 'output/model.pth')
 
 # ONNX export
 
