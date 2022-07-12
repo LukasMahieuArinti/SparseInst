@@ -10,14 +10,15 @@ from detectron2.modeling import META_ARCH_REGISTRY, build_backbone
 
 from .encoder import build_sparse_inst_encoder
 from .decoder import build_sparse_inst_decoder
+
 from .loss import build_sparse_inst_criterion
-from .utils import nested_tensor_from_tensor_list
 
 # from .utils import nested_tensor_from_tensor_list
 from alfred.utils.log import logger
 from alfred import print_shape
 
 __all__ = ["SparseInst"]
+
 
 @torch.jit.script
 def rescoring_mask(scores, mask_pred, masks):
@@ -50,12 +51,13 @@ def batched_index_select(input, dim, index):
     return torch.cat(torch.chunk(torch.gather(input, dim, index), chunks=index.shape[0], dim=dim), dim=0)
 
 @META_ARCH_REGISTRY.register()
-class SparseInst(nn.Module):
+class SparseInstONNX(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
         # move to target device
         self.device = torch.device(cfg.MODEL.DEVICE)
+        self.onnx_export = False
 
         # backbone
         self.backbone = build_backbone(cfg)
@@ -81,7 +83,8 @@ class SparseInst(nn.Module):
 
         # inference
         # self.cls_threshold = cfg.MODEL.SPARSE_INST.CLS_THRESHOLD
-        self.cls_threshold = 0.10#cfg.MODEL.YOLO.CONF_THRESHOLD
+        #self.cls_threshold = cfg.MODEL.YOLO.CONF_THRESHOLD
+        self.cls_threshold = cfg.MODEL.SPARSE_INST.CLS_THRESHOLD
         self.mask_threshold = cfg.MODEL.SPARSE_INST.MASK_THRESHOLD
         self.max_detections = cfg.MODEL.SPARSE_INST.MAX_DETECTIONS
 
@@ -123,8 +126,7 @@ class SparseInst(nn.Module):
         return x
 
     def forward(self, batched_inputs):
-        if torch.onnx.is_in_onnx_export():
-            batched_inputs = batched_inputs[0]
+        if self.onnx_export:
             logger.info("[WARN] exporting onnx...")
             assert isinstance(batched_inputs, (list, torch.Tensor)) or isinstance(
                 batched_inputs, list
@@ -154,7 +156,7 @@ class SparseInst(nn.Module):
             losses = self.criterion(output, targets, max_shape)
             return losses
         else:
-            if torch.onnx.is_in_onnx_export():
+            if self.onnx_export:
                 results = self.inference_onnx(
                     output, batched_inputs, max_shape
                 )
@@ -231,6 +233,46 @@ class SparseInst(nn.Module):
             result.pred_classes = labels
             results.append(result)
         return results
+
+    def inference_single(self, outputs, img_shape, pad_shape, ori_shape):
+        """
+        inference for only one sample
+        Args:
+            scores (tensor): [NxC]
+            masks (tensor): [NxHxW]
+            img_shape (list): (h1, w1), image after resized
+            pad_shape (list): (h2, w2), padded resized image
+            ori_shape (list): (h3, w3), original shape h3*w3 < h1*w1 < h2*w2
+        """
+        result = Instances(ori_shape)
+        # scoring
+        pred_logits = outputs["pred_logits"][0].sigmoid()
+        pred_scores = outputs["pred_scores"][0].sigmoid().squeeze()
+        pred_masks = outputs["pred_masks"][0].sigmoid()
+        # obtain scores
+        scores, labels = pred_logits.max(dim=-1)
+        # remove by thresholding
+        keep = scores > self.cls_threshold
+        scores = torch.sqrt(scores[keep] * pred_scores[keep])
+        labels = labels[keep]
+        pred_masks = pred_masks[keep]
+
+        if scores.size(0) == 0:
+            return None
+        scores = rescoring_mask(scores, pred_masks > 0.45, pred_masks)
+        h, w = img_shape
+        # resize masks
+        pred_masks = F.interpolate(pred_masks.unsqueeze(1), size=pad_shape,
+                                   mode="bilinear", align_corners=False)[:, :, :h, :w]
+        pred_masks = F.interpolate(pred_masks, size=ori_shape, mode='bilinear',
+                                   align_corners=False).squeeze(1)
+        mask_pred = pred_masks > self.mask_threshold
+
+        mask_pred = BitMasks(mask_pred)
+        result.pred_masks = mask_pred
+        result.scores = scores
+        result.pred_classes = labels
+        return result
 
     def inference_onnx(self, output, batched_inputs, max_shape):
         from alfred import print_shape

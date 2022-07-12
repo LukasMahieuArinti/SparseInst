@@ -1,6 +1,7 @@
 MODEL:
   META_ARCHITECTURE: "SparseInstONNX"
-  WEIGHTS: "detectron2://ImageNetPretrained/torchvision/R-50.pkl"
+  #WEIGHTS: "detectron2://ImageNetPretrained/torchvision/R-50.pkl"
+  WEIGHTS : "output/model_final.pth"
   PIXEL_MEAN: [123.675, 116.280, 103.530]
   PIXEL_STD: [58.395, 57.120, 57.375]
   BACKBONE:
@@ -21,7 +22,7 @@ DATASETS:
   TRAIN: ("specprep11_train",)
   TEST:  ("specprep11_val",)
 SOLVER:
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 1
   BASE_LR: 0.00005
   STEPS: (2100, 2500)
   MAX_ITER: 2700

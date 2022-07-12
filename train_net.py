@@ -27,6 +27,8 @@ from detectron2.evaluation import (
 
 from sparseinst import add_sparse_inst_config, COCOMaskEvaluator
 
+from onnx_export.sparseinstonnx.sparseinstonnx import SparseInstONNX
+
 from detectron2.data.datasets import register_coco_instances
 register_coco_instances("specprep11_train", {}, "data/20220404_specprep11_train.json", "data/images_20220404")
 register_coco_instances("specprep11_val", {}, "data/20220404_specprep11_val.json", "data/images_20220404")
@@ -176,7 +178,6 @@ def main(args):
     trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
     return trainer.train()
-
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()

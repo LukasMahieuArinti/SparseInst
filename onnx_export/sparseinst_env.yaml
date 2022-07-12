@@ -1,0 +1,14 @@
+name: sparseinst_env
+channels:
+  - defaults
+dependencies:
+  - openssl
+  - certifi
+  - numpy
+  - pip:
+    - onnxruntime-gpu
+    - onnxruntime-olive
+    - onnxsim
+    - opencv-python
+    - pycocotools
+

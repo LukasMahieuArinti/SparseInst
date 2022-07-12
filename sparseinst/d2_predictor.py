@@ -46,7 +46,7 @@ class VisualizationDemo(object):
             vis_output (VisImage): the visualized image output.
         """
         vis_output = None
-        predictions = self.predictor(image)
+        predictions = self.predictor(image[:,:,::-1]) # back to RGB for detectron visualization
         visualizer = Visualizer(image, self.metadata,
                                 instance_mode=self.instance_mode)
         if "panoptic_seg" in predictions:
