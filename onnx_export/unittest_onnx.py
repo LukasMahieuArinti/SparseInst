@@ -95,8 +95,8 @@ if __name__ == "__main__":
     logger.debug("Arguments: " + str(args))
 
     # Load data
-    h = 640
-    w = 640
+    h = 550
+    w = 550
     input_image, _ = load_test_image(args.input, h, w)
     
     # First test
