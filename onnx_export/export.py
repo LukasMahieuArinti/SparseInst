@@ -70,8 +70,8 @@ if __name__ == "__main__":
     metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
 
     # Load sample image
-    h = 640
-    w = 640
+    h = 550
+    w = 550
     inp, ori_img = load_test_image(args.input, h, w)
 
     # Setup model
