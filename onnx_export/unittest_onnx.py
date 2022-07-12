@@ -67,7 +67,7 @@ def get_parser():
     )
     parser.add_argument(
         "--onnx-model",
-        default="./onnx_export/olive_opt_result/optimized_model.onnx",
+        default="./onnx_export/output/optimized_model.onnx",
         metavar="FILE",
         help="path to onnx model",
     )
