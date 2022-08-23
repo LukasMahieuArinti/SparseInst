@@ -2,3 +2,4 @@ output/*.json
 __pycache__
 output/*.onnx
 output/*.txt
+!data/*.json

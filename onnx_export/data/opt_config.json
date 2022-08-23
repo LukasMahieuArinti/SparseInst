@@ -1,0 +1,11 @@
+{
+    "model_path": "onnx_export/output/model_converted_sim.onnx",
+    "result_path": "onnx_export/output",
+    "input_names": ["images"],
+    "input_shapes": [[1,640,640,3]],
+    "quantization_enabled": true,
+    "providers_list": ["cuda"],
+    "omp_max_active_levels": ["1"],
+    "kmp_affinity": ["respect,none"],
+    "concurrency_num": 2
+}

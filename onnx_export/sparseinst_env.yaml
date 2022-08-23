@@ -5,6 +5,7 @@ dependencies:
   - openssl
   - certifi
   - numpy
+  - pip
   - pip:
     - onnxruntime-gpu
     - onnxruntime-olive
